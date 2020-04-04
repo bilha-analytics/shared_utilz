@@ -1,0 +1,5 @@
+.ipynb_checkpoints
+__pycache__
+example.*
+gsheet_get.json
+token.pickle

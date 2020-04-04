@@ -1,6 +1,0 @@
-'''
-author: bg
-goal: 
-type: 
-refactor: class
-'''

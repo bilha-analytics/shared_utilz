@@ -180,6 +180,7 @@ def gsheetRead_GoogleWay(dpath):
     results = None
     
     scope =  ['https://www.googleapis.com/auth/spreadsheets'] 
+    dfile = "D:/zRepoz/shared/gsheet_get.json"
 
     creds = None
     if os.path.exists( 'token.pickle'):
@@ -189,7 +190,7 @@ def gsheetRead_GoogleWay(dpath):
         if creds and creds.expired and creds.refresh_token:
             creds.refresh( Request() ) 
         else:
-            flow = InstalledAppFlow.from_client_secrets_file( 'gsheet_get.json', scope) 
+            flow = InstalledAppFlow.from_client_secrets_file( dfile, scope) 
             creds = flow.run_local_server(port=0)
         with open('token.pickle', 'wb') as fd:
             pickle.dump( creds, fd) 
@@ -226,20 +227,20 @@ input:
     db_path: faq retrieval Gsheet database path as (sheetID, sheetName_and_range). Format = set{Que_string, Category/Class, Response, Src_url as optional}
     training_set: user input questions database path as as (sheetID, sheetName_and_range). Format = list{Que_string, Category/Class}
 return:
-    gsheet_faq_db : response retrievel dict(category, response_paragrah)
+    gsheet_faq_db : response retrievel dict(category, [response_paragrah, src, src_link])
     gsheet_faq_training_set_db: training user_input questions dict(que_input, category)
 
 '''
 def unpack_FaqGsheet(db_path, training_set, removeHeader=True):     
     start_idx = 1 if removeHeader else 0
-    ## 1. unpack responses set @ retrieval class_cat : response 
+    ## 1. unpack responses set @ retrieval class_cat : response << dict(category, [response_paragrah, src, src_link]) 
     gsheet_faq_db = {} 
     tmp = readFrom( db_path, dtype=zGSHEET )[start_idx: ] ## ignore header row TODO: refactor at caller to decide
     for row in tmp:
         if len(row) > 2:
-            gsheet_faq_db[ row[1] ] = row[2] 
+            gsheet_faq_db[ row[1] ] = row[2:] 
 
-    ## 2. unpack training set  que : class_cat       
+    ## 2. unpack training set  que : class_cat       << dict(que_input, category)
     gsheet_faq_training_set_db = {}
     tmp = readFrom( training_set, dtype=zGSHEET )[start_idx: ]
     for row in tmp:
