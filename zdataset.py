@@ -287,13 +287,27 @@ TODO: abstract class, iterable, own and encap a data
 class ZDataset():
     ## TODO: overloaded constructor 
     ## TODO: expand multiple data in one return e.g. (train, test) or (faq_db, train)
+    
     def initz(self):         
         self.stop_wordz = None
         self.clean_data = None
         self.y_labelz = None 
         self.x_index = None 
         self.paramz = None
-        # pass 
+        self.context = None
+        self.encoded_matrix = None 
+        self.data = None         
+        self.class_categories = None 
+        ## TODO: save paramz @ dump clean_data
+        self.paramz = {
+            'remove_stopwordz' : True,
+            'stop_wordz' : None, 
+            'remove_numberz' : True, 
+            'lemmatized' : True, 
+            'unique' : False
+        }
+        self.enc_type = ZENC_TFIDF
+
 
     def initFromSeq(self, data):
         self.initz()
@@ -306,7 +320,7 @@ class ZDataset():
     ####TODO: ownership 
     def getStopWords(self, new_stop_words=None):
         if self.stop_wordz is None:
-            self.stop_wordz = stopwords.words('english')      
+            self.stop_wordz = stopwords.words('english')      #[] #TODO
         if new_stop_words is not None:
             self.stop_wordz.extend( new_stop_words) 
         return self.stop_wordz 
@@ -321,17 +335,24 @@ class ZDataset():
         dpath = self.data_path if data_path is None else data_path 
         dtype = self.data_type if data_type is None else data_type
         
-        filez = {
-            'xftz' : self.data if self.clean_data is None else self.clean_data , 
-            'xidx' : self.x_index, 
-            'ylbz' : self.y_labelz, 
-            'argz' : self.paramz, 
-        }
+        filez = self.getDumpSaveItems()
 
         for ext, db in filez.items():
             tf = "{}.{}".format(dpath, ext) 
             if db is not None: 
                 zdata_source.writeTo( db, tf, dtype=dtype) 
+    
+    def getDumpSaveItems(self):
+        return {
+            'xftz' : self.data if self.clean_data is None else self.clean_data , 
+            'xidx' : self.x_index, 
+            'ylbz' : self.y_labelz, 
+            'argz' : self.paramz, 
+            'ctx' : self.context,
+            'encm' : self.encoded_matrix,
+            'stpz' : self.stop_wordz,
+        }
+
 
     def dumpLoad(self, data_path=None, data_type=None):
         self.initz()
@@ -341,12 +362,7 @@ class ZDataset():
         dpath = self.data_path if data_path is None else data_path 
         dtype = self.data_type if data_type is None else data_type
 
-        filez = {
-            'xftz' : "clean_data",
-            'xidx' : 'x_index', 
-            'ylbz' : 'y_labelz', 
-            'argz' : 'paramz', 
-        }
+        filez = self.getDumpLoadItems() 
 
         for ext, db in filez.items():
             tf = "{}.{}".format(dpath, ext) 
@@ -355,13 +371,30 @@ class ZDataset():
                 zlogger.log('zdataset.dumpLoad', "Loaded {} of size {}".format( tf, len(getattr(self, db) ) ) ) 
             else:
                 zlogger.log('zdataset.dumpLoad', "Not Found: {}".format( tf) ) 
-                
-        zlogger.log('zdataset.dumLoad', "FINISHED: clean data size {}".format( len(self.clean_data) ) ) 
+        
+        self.data = self.clean_data 
+        self.updateXIndex()
+        self.updateYIndex()
+        # zlogger.log('zdataset.dumLoad', "FINISHED: clean data size {}".format( len(self.data) ) ) 
+
+    def getDumpLoadItems(self):
+        return {
+            'xftz' : "clean_data",
+            'xidx' : 'x_index', 
+            'ylbz' : 'y_labelz', 
+            'argz' : 'paramz', 
+            'ctx' : 'context',
+            'encm' : 'encoded_matrix',
+            'stpz' : 'stop_wordz', 
+        }
+
     
     ## TODO: ensure consistency with clean_data and original data
     def updateXIndex(self):
         self.x_index = { i : x for i, x in enumerate(self.clean_data) } 
-        
+
+    def updateYIndex(self):
+        self.class_categories = set(self.y_labelz ) if self.y_labelz is not None else None 
     '''
     Can be called before or after preprocessing TODO: set as option 
     Return:
@@ -401,7 +434,19 @@ class ZDataset():
 
 
     def getPredictedAtIndex(self, y_index): 
-        return self.y_labelz[ y_index ] if self.y_labelz else None 
+        return self.y_labelz[ y_index ] if self.y_labelz is not None else None 
+    
+    def getYLabelIndex(self, y_text): 
+        # return np.where( self.y_labelz == y_text )  if self.y_labelz is not None else None 
+        return list( self.class_categories ).index(y_text )  if self.class_categories is not None else None 
+
+    def ylabelzAsInts(self, val_ylabz = None): 
+        val_ylabz = self.y_labelz if val_ylabz is None else val_ylabz 
+        return [ self.getYLabelIndex(y) for y in val_ylabz ]
+
+
+    def getNumberClasses(self):
+        return len( set( list(self.y_labelz) ) ) 
 
     '''
     Things done
@@ -506,8 +551,8 @@ class ZDataset():
         self.context, self.encoded_matrix = doTrainEncode( enc_type, self.clean_data , ngram_range=ngramz ) 
         return self.context, self.encoded_matrix 
 
-    def encodePredict(self, text):
-        cleaned_text = self.preprocessPredict(text) 
+    def encodePredict(self, text_list):
+        cleaned_text = self.preprocessPredict(text_list) 
         return doPredictEncode(  self.context,  cleaned_text, self.enc_type )  
    
 
@@ -515,24 +560,10 @@ class ZDataset():
 '''
 class ZGsheetFaqDataSet( ZDataset ):    
     ## todo: SUPER 
-    def initz(self):         
-        self.stop_wordz = None
-        self.clean_data = None
-        self.y_labelz = None 
-        self.x_index = None 
+    def initz(self):
+        ZDataset.initz(self)
         self.phrases_db = None
         self.faq_db = None 
-        self.data = None 
-        self.paramz = None 
-
-        ## TODO: save paramz @ dump clean_data
-        self.paramz = {
-            'remove_stopwordz' : True,
-            'stop_wordz' : None, 
-            'remove_numberz' : True, 
-            'lemmatized' : True, 
-            'unique' : False
-        }
 
 
     def load(self, data_path, data_type):
@@ -547,55 +578,27 @@ class ZGsheetFaqDataSet( ZDataset ):
         return self.faq_db.get( class_category, "I don't know about that one yet. I'll go learn some more.")
 
     ##TODO: super call
-    def dumpSave(self, data_path=None, data_type=None):
-        dpath = self.data_path if data_path is None else data_path 
-        dtype = self.data_type if data_type is None else data_type
-        
-        filez = {
-            'xftz' : self.data if self.clean_data is None else self.clean_data , 
-            'xidx' : self.x_index, 
-            'ylbz' : self.y_labelz, 
-            'argz' : self.paramz, 
+    def getDumpSaveItems(self ):
+        tmp = ZDataset.getDumpSaveItems( self) 
+        tmp2 = {
             'faqdb' : self.faq_db,
-            'phrdb' : self.phrases_db
+            'phrdb' : self.phrases_db,
         }
-
-        for ext, db in filez.items():
-            tf = "{}.{}".format(dpath, ext) 
-            if db is not None: 
-                zdata_source.writeTo( db, tf, dtype=dtype ) 
+        return { **tmp , **tmp2}
 
 
-    def dumpLoad(self, data_path=None, data_type=None):
-        self.initz()
-        ##TODO: reconcile 
-        self.data_path = data_path 
-
-        dpath = self.data_path if data_path is None else data_path 
-        dtype = self.data_type if data_type is None else data_type
-
-        filez = {
-            'xftz' : "clean_data",
-            'xidx' : 'x_index', 
-            'ylbz' : 'y_labelz', 
-            'argz' : 'paramz', 
+    def getDumpLoadItems(self ): 
+        tmp = ZDataset.getDumpLoadItems(self)
+        tmp2 = {
             'faqdb' : 'faq_db',
-            'phrdb' : 'phrases_db'
+            'phrdb' : 'phrases_db',
         }
-
-        for ext, db in filez.items():
-            tf = "{}.{}".format(dpath, ext) 
-            if os.path.exists( tf ): 
-                setattr( self, db, zdata_source.readFrom( tf, dtype=dtype)  ) 
-                zlogger.log('zdataset.dumpLoad', "Loaded {} of size {}".format( tf, len(getattr(self, db)) ) ) 
-            else:
-                zlogger.log('zdataset.dumpLoad', "Not Found: {}".format( tf) ) 
-                
-        zlogger.log('zdataset.dumLoad', "FINISHED: clean data size {}".format( len(self.clean_data) ) ) 
-    
+        return { **tmp , **tmp2}
 
     def getPredictedAtIndex(self, y_index): 
+        # zlogger.log( 'zdataset.get_y-at', "IN: {}".format(y_index ) )
         class_cat = self.y_labelz[ y_index ] 
+        # zlogger.log( 'zdataset.get_y-at', "CAT: {}".format( class_cat ) ) 
         return class_cat, self.faq_db.get( class_cat , None )  
 
 ###########################################################
