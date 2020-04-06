@@ -70,7 +70,7 @@ class ZModel():
         return input_text.upper() 
     
 
-    #################### CREATE: BUILD & TRAIN ######################
+    #################### CREATE: BUILD & TRAIN ###################### << not liking below signatures. TODO:
     '''
     ''' 
     def build(self, **kwargz):

@@ -289,7 +289,7 @@ Return:
 ''' 
 def writeTo(content, dpath, dtype=zFILE, mode=MODE_WRITE):
     res = STREAMZ.get( dtype, doFile) 
-    zlogger.log("dataSource.writeTo", "res = {}".format(res) )
+    zlogger.log("dataSource.writeTo", "dpath = {}".format(dpath) )
     res(dpath, mode=mode,  content=content,)  
 
 

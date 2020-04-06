@@ -12,6 +12,7 @@ import zdata_source
 from collections.abc import Iterable
 import string, re 
 import math
+import os
 import numpy as np 
 import pandas as pd 
 
@@ -68,7 +69,7 @@ def cleanup_stopwords(text, stop_wordz=None):
     # print("stopz {}".format( repr(stopz) ) ) 
     tokenz = " ".join( text ) if not isinstance(text, str) else text
     # print("STOPZ>>> {}".format( repr(tokenz) ) ) 
-    tokenz = [w for w in nltk.word_tokenize( tokenz ) if w.lower() not in stopz ] 
+    tokenz = [w for w in nltk.word_tokenize( tokenz ) if w.lower().strip() not in stopz ] 
     # print("STOPZ.FIN>>> {}".format( repr(tokenz) ) ) 
     return  tokenz
 
@@ -140,7 +141,7 @@ def cleanup_and_lemmatize(text, remove_stopwordz=False, stop_wordz=None,
                 remove_numberz=remove_numberz)
 
     if unique:
-        result = sorted( set(result ) ) 
+        result = set(result )
 
     # print("<<<<< DONE CLEAN UP <<<< {}".format( repr(result) ) ) 
 
@@ -159,17 +160,13 @@ def getVocabList(text, remove_stopwordz=False, stop_wordz=None,
     return sorted( set( vocab ) ) 
 
 '''
-Operates
+Assumes preprocessing already done for now. TODO: reconcile with char Vs word Vs sentence level
 Input:  
 Output: (vocab_vec, matrix) Vocab used and matrix per sentence encoded. 
 '''
-def onehotEncode(text, remove_stopwordz=False, stop_wordz=None, remove_numberz=False, lemmatized=False):
-    vocab = getVocabList( text, 
-        remove_stopwordz=remove_stopwordz, stop_wordz=stop_wordz, 
-        remove_numberz=remove_numberz, lemmatized=lemmatized ) 
-
-    vect = onehotVectorizer(vocab, text)
-
+def onehotEncode(text_list, ngram_range=None):
+    vocab = sorted( set( list( np.array(text_list).flatten() ) ) )  
+    vect = onehotVectorizer(vocab, text_list)
     return vocab, vect
 
 def onehotVectorizer(vocab, text):
@@ -183,71 +180,58 @@ def onehotVectorizer(vocab, text):
     return vect
 
 '''
-Operates
+Assumes preprocessing already done for now. TODO: reconcile with char Vs word Vs sentence level
+TODO: other CountVectorize params
 Input:  
 Output: (count_vectorizer, res_matrix) Vectorizer used and matrix per sentence encoded. 
 '''
-def countEncode(text, ngram_range=(1,1), **kwargz ):
-    tokenz = cleanup_and_lemmatize( text, 
-            remove_stopwordz=kwargz['remove_stopwordz'], stop_wordz=kwargz['stop_wordz'], 
-            remove_numberz=kwargz['remove_numberz'], lemmatized=kwargz['lemmatized'] )
-    
-    cv = CountVectorizer( stop_words=kwargz['stop_wordz'], ngram_range=ngram_range ) 
-    res_matrix = cv.fit_transform( tokenz ) #.toarray().atype('float32')
+def countEncode(text_list, ngram_range=(1,1), **kwargz ):
+    cv = CountVectorizer( ngram_range=ngram_range ) 
+    res_matrix = cv.fit_transform( text_list ) #.toarray().atype('float32')
 
     return cv, res_matrix 
 
 
 '''
-Operates
+Assumes preprocessing already done for now. TODO: reconcile with char Vs word Vs sentence level
+TODO: Other TfidfVectorizer params e.g min-df
 Input:  
 Output: (count_vectorizer, res_matrix) Vectorizer used and matrix per sentence encoded. 
 '''
-def tfidfEncode(text, 
-        remove_stopwordz=False, stop_wordz=None, 
-        remove_numberz=False, lemmatized=False, 
-        ngram_range=(1,1)
-        ):
+def tfidfEncode(text_list, ngram_range=(1,1), **kwargz):  
+    cv = TfidfVectorizer( ngram_range=ngram_range ) 
 
-    tokenz = cleanup_and_lemmatize(text, 
-            remove_stopwordz=remove_stopwordz, stop_wordz=stop_wordz, 
-            remove_numberz=remove_numberz, lemmatized=lemmatized )
-    
-    cv = TfidfVectorizer( stop_words=stop_wordz, ngram_range=ngram_range ) 
-    res_matrix = cv.fit_transform( tokenz ) #.toarray().atype('float32')
+    res_matrix = cv.fit_transform( text_list ) #.toarray().atype('float32')
 
     return cv, res_matrix 
 
 
 '''
-Operates
+Assumes preprocessing already done for now. TODO: reconcile with char Vs word Vs sentence level
 Input:  
 Output: (count_vectorizer, res_matrix) Vectorizer used and matrix per sentence encoded. 
 '''
-def embeddingEncode(text, 
-    remove_stopwordz=False, stop_wordz=None, 
-    remove_numberz=False, lemmatized=False, 
-    ngram_range=(1,1)
-    ):
+def embeddingEncode(text_list, ngram_range=(1,1), **kwargz):  
     raise NotImplementedError 
 
 
 '''
 TODO:
 '''
-def doTrainEncode(enc_type, text, **argz):
-    params = ['remove_stopwordz', 'stop_wordz', 'remove_numberz','lemmatized']
-    for p in params:
-        if not p in argz.keys():
-            argz[p] = None 
+def doTrainEncode(enc_type, text_list, ngram_range=(1,1), **argz):
+#     params = ['remove_stopwordz', 'stop_wordz', 'remove_numberz','lemmatized', 'ngram_range' ]
+#     for p in params:
+#         if not p in argz.keys():
+#             argz[p] = None 
 
-    encoder = dict_encoders.get(enc_type, ZENC_TFIDF) 
-    return encoder( text, **argz)  
+    encoder = dict_encoders.get(enc_type, tfidfEncode) 
+    
+    return encoder( text_list, ngram_range=ngram_range, **argz)  ## encoder/context and encoded matrix  
 
 '''
 TODO: include preprocessing
 '''
-def doPredictEncode(enc_type, context, text):
+def doPredictEncode(context, text,  enc_type=ZENC_TFIDF):
     result = None 
 
     if enc_type == ZENC_ONEHOT:
@@ -307,6 +291,8 @@ class ZDataset():
         self.stop_wordz = None
         self.clean_data = None
         self.y_labelz = None 
+        self.x_index = None 
+        self.paramz = None
         # pass 
 
     def initFromSeq(self, data):
@@ -330,13 +316,52 @@ class ZDataset():
         self.data_type = data_type 
         self.data = np.array( data_source.readFrom(data_path, data_type)  ) 
 
+   
     def dumpSave(self, data_path=None, data_type=None):
         dpath = self.data_path if data_path is None else data_path 
         dtype = self.data_type if data_type is None else data_type
-        zdata_source.writeTo(self.data, "{}.xftz".format(dpath), dtype=dtype) 
-        if self.y_labelz is not None:
-            zdata_source.writeTo(self.y_labelz, "{}.ylbz".format(dpath), dtype=dtype) 
+        
+        filez = {
+            'xftz' : self.data if self.clean_data is None else self.clean_data , 
+            'xidx' : self.x_index, 
+            'ylbz' : self.y_labelz, 
+            'argz' : self.paramz, 
+        }
 
+        for ext, db in filez.items():
+            tf = "{}.{}".format(dpath, ext) 
+            if db is not None: 
+                zdata_source.writeTo( db, tf, dtype=dtype) 
+
+    def dumpLoad(self, data_path=None, data_type=None):
+        self.initz()
+        ##TODO: reconcile 
+        self.data_path = data_path 
+
+        dpath = self.data_path if data_path is None else data_path 
+        dtype = self.data_type if data_type is None else data_type
+
+        filez = {
+            'xftz' : "clean_data",
+            'xidx' : 'x_index', 
+            'ylbz' : 'y_labelz', 
+            'argz' : 'paramz', 
+        }
+
+        for ext, db in filez.items():
+            tf = "{}.{}".format(dpath, ext) 
+            if os.path.exists( tf ): 
+                setattr( self, db, zdata_source.readFrom( tf, dtype=dtype)  ) 
+                zlogger.log('zdataset.dumpLoad', "Loaded {} of size {}".format( tf, len(getattr(self, db) ) ) ) 
+            else:
+                zlogger.log('zdataset.dumpLoad', "Not Found: {}".format( tf) ) 
+                
+        zlogger.log('zdataset.dumLoad', "FINISHED: clean data size {}".format( len(self.clean_data) ) ) 
+    
+    ## TODO: ensure consistency with clean_data and original data
+    def updateXIndex(self):
+        self.x_index = { i : x for i, x in enumerate(self.clean_data) } 
+        
     '''
     Can be called before or after preprocessing TODO: set as option 
     Return:
@@ -361,6 +386,22 @@ class ZDataset():
 
         return self.train_data, self.test_data
 
+     
+    '''
+    Calculate (n_observations / avg_words_per_observation ) t_ratio
+        If above t_ratio < 1500, tokenize as n-grams and use a simple multi-layer perceptron (MLP) model to classify
+        Else Sequence RNN e.g. SepCNN 
+    '''
+    def thresholdRatio(self):        
+        n_observations = len( self.clean_data ) 
+        avg_words_per_observation = [ len( nltk.word_tokenize(rec) )  for rec in self.clean_data]
+        avg_words_per_observation = np.array( avg_words_per_observation ).mean() 
+
+        return n_observations / avg_words_per_observation
+
+
+    def getPredictedAtIndex(self, y_index): 
+        return self.y_labelz[ y_index ] if self.y_labelz else None 
 
     '''
     Things done
@@ -380,6 +421,13 @@ class ZDataset():
     '''
     def preprocess(self, remove_stopwordz=False, stop_wordz=None, 
                     remove_numberz=False, lemmatized=True, unique=False): 
+        self.paramz = {
+            'remove_stopwordz' : remove_stopwordz,
+            'stop_wordz' : stop_wordz, 
+            'remove_numberz' : remove_numberz, 
+            'lemmatized' : lemmatized, 
+            'unique' : unique
+        }
         # tmp = np.vectorize(cleanup_and_lemmatize)( # 
         self.clean_data  =  np.array( [ 
                 " ".join( cleanup_and_lemmatize(
@@ -393,6 +441,29 @@ class ZDataset():
                 " ".join( sorted( set( rec ) )   ) 
                         for rec in self.clean_data
             ])
+            
+        self.updateXIndex()
+
+    '''
+    @TODO: use same method as preprocess;; reuse
+    '''
+    def preprocessPredict(self, input_text_list): 
+        cleaned_input_text  =  np.array( [ 
+                " ".join( cleanup_and_lemmatize(
+                        rec, 
+                        remove_stopwordz = self.paramz['remove_stopwordz'], 
+                        stop_wordz = self.paramz['stop_wordz'], 
+                        remove_numberz = self.paramz['remove_numberz'] , 
+                        lemmatized = self.paramz['lemmatized'] ) )
+                for rec in input_text_list ] ) 
+                
+        if self.paramz['unique']: #use vocab within a record 
+            cleaned_input_text = np.array([
+                " ".join( sorted( set( rec ) )   ) 
+                        for rec in cleaned_input_text
+            ])
+
+        return cleaned_input_text 
 
     '''
     get vocab across entire data set
@@ -425,44 +496,108 @@ class ZDataset():
 
         return  dat 
 
+
+    ###------ TODO: OWNERSHIP @ ENCODERS, SELECTORS, 
     '''
     TODO: expand options and train Vs test/predict
     '''
-    def encodeTrain(self,  enc_type=None):       
-        self.context, self.encoded_matrix = doTrainEncode( enc_type, self.clean_data  ) 
+    def encodeTrain(self,  enc_type=ZENC_TFIDF, ngramz=(1,1) ):       
         self.enc_type = enc_type 
+        self.context, self.encoded_matrix = doTrainEncode( enc_type, self.clean_data , ngram_range=ngramz ) 
         return self.context, self.encoded_matrix 
 
     def encodePredict(self, text):
-        return doPredictEncode( self.enc_type, self.context,  text) 
-        
-    
+        cleaned_text = self.preprocessPredict(text) 
+        return doPredictEncode(  self.context,  cleaned_text, self.enc_type )  
+   
 
 '''
 '''
-class ZGsheetFaqDataSet( ZDataset ):     
+class ZGsheetFaqDataSet( ZDataset ):    
+    ## todo: SUPER 
+    def initz(self):         
+        self.stop_wordz = None
+        self.clean_data = None
+        self.y_labelz = None 
+        self.x_index = None 
+        self.phrases_db = None
+        self.faq_db = None 
+        self.data = None 
+        self.paramz = None 
+
+        ## TODO: save paramz @ dump clean_data
+        self.paramz = {
+            'remove_stopwordz' : True,
+            'stop_wordz' : None, 
+            'remove_numberz' : True, 
+            'lemmatized' : True, 
+            'unique' : False
+        }
+
+
     def load(self, data_path, data_type):
         self.data_path = data_path
         self.data_type = data_type 
         # zdata_source. returns dicts with class_cat as key         
         self.faq_db, self.phrases_db = zdata_source.readFrom(data_path, data_type)  
         self.data = np.array( [ k for k in self.phrases_db.keys() ] ) 
-        self.y_labelz = np.array( [ k for k in self.phrases_db.values() ] ) 
-
-    '''
-    b/c model will work with numerics, index the input phrases such that we can find their class_cat to look up the faq db
-        - need to maintain order of index and pharses in sync. Should it be before or after splitting or update it each time?
-        - 
-    '''
-    def category_to_index(self):
-        # self.faq_db = { cat : resp for  (_, cat, resp, *_) in self.faq_db }    
-        # self.faq_db = { cat : resp for  (cat, resp) in enumerate(self.faq_db) } 
-        pass    
+        self.y_labelz = np.array( [ k for k in self.phrases_db.values() ] )  
 
     def fetchResponse(self, class_category):
         return self.faq_db.get( class_category, "I don't know about that one yet. I'll go learn some more.")
 
+    ##TODO: super call
+    def dumpSave(self, data_path=None, data_type=None):
+        dpath = self.data_path if data_path is None else data_path 
+        dtype = self.data_type if data_type is None else data_type
+        
+        filez = {
+            'xftz' : self.data if self.clean_data is None else self.clean_data , 
+            'xidx' : self.x_index, 
+            'ylbz' : self.y_labelz, 
+            'argz' : self.paramz, 
+            'faqdb' : self.faq_db,
+            'phrdb' : self.phrases_db
+        }
+
+        for ext, db in filez.items():
+            tf = "{}.{}".format(dpath, ext) 
+            if db is not None: 
+                zdata_source.writeTo( db, tf, dtype=dtype ) 
+
+
+    def dumpLoad(self, data_path=None, data_type=None):
+        self.initz()
+        ##TODO: reconcile 
+        self.data_path = data_path 
+
+        dpath = self.data_path if data_path is None else data_path 
+        dtype = self.data_type if data_type is None else data_type
+
+        filez = {
+            'xftz' : "clean_data",
+            'xidx' : 'x_index', 
+            'ylbz' : 'y_labelz', 
+            'argz' : 'paramz', 
+            'faqdb' : 'faq_db',
+            'phrdb' : 'phrases_db'
+        }
+
+        for ext, db in filez.items():
+            tf = "{}.{}".format(dpath, ext) 
+            if os.path.exists( tf ): 
+                setattr( self, db, zdata_source.readFrom( tf, dtype=dtype)  ) 
+                zlogger.log('zdataset.dumpLoad', "Loaded {} of size {}".format( tf, len(getattr(self, db)) ) ) 
+            else:
+                zlogger.log('zdataset.dumpLoad', "Not Found: {}".format( tf) ) 
+                
+        zlogger.log('zdataset.dumLoad', "FINISHED: clean data size {}".format( len(self.clean_data) ) ) 
     
+
+    def getPredictedAtIndex(self, y_index): 
+        class_cat = self.y_labelz[ y_index ] 
+        return class_cat, self.faq_db.get( class_cat , None )  
+
 ###########################################################
 
 if __name__ == "__main__":
