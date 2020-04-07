@@ -42,7 +42,7 @@ class NgramMLP(ZModel):
         self.trained_matrix = encoded_matrix 
         self.ylabelz = ylabelz 
         input_shapez = self.trained_matrix.shape[1:]
-        zlogger.log( 'MLP.build' , "input_shapez = {}".format(input_shapez ) ) 
+        # zlogger.log( 'MLP.build' , "input_shapez = {}".format(input_shapez ) ) 
 
         ### 2. build model << TODO: t_ratio ngram MLP Vs SepCNN
         self.model = keras.models.Sequential() 
@@ -99,9 +99,10 @@ class NgramMLP(ZModel):
 
         train_history = train_history.history 
 
-        zlogger.log( 'MLP.train', "FINISHED: Epochs {}. Validation: Accuracy = {} Loss = {}".format(
-            epochs , train_history['val_acc'][-1], train_history['val_loss'][-1]
-        ))
+        # zlogger.log( 'MLP.train', "FINISHED: Epochs {}. Train acc = {} Validation: Accuracy = {} Loss = {}".format(
+        #     epochs ,  train_history['acc'][-1], 
+        #     train_history['val_acc'][-1], train_history['val_loss'][-1]
+        # ))
         return train_history 
 
     '''

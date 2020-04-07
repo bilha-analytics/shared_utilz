@@ -312,6 +312,8 @@ class ZDataset():
     def initFromSeq(self, data):
         self.initz()
         self.data = np.array(data )
+        self.updateXIndex()
+        self.updateYIndex()
 
     def initFromResource(self, data_path, data_type): 
         self.initz()
@@ -328,7 +330,9 @@ class ZDataset():
     def load(self, data_path, data_type):
         self.data_path = data_path
         self.data_type = data_type 
-        self.data = np.array( data_source.readFrom(data_path, data_type)  ) 
+        self.data = np.array( data_source.readFrom(data_path, data_type)  )  
+        self.updateXIndex()
+        self.updateYIndex()
 
    
     def dumpSave(self, data_path=None, data_type=None):
@@ -391,7 +395,7 @@ class ZDataset():
     
     ## TODO: ensure consistency with clean_data and original data
     def updateXIndex(self):
-        self.x_index = { i : x for i, x in enumerate(self.clean_data) } 
+        self.x_index = { i : x for i, x in enumerate(self.clean_data) } if self.clean_data is not None else None 
 
     def updateYIndex(self):
         self.class_categories = set(self.y_labelz ) if self.y_labelz is not None else None 
@@ -442,11 +446,12 @@ class ZDataset():
 
     def ylabelzAsInts(self, val_ylabz = None): 
         val_ylabz = self.y_labelz if val_ylabz is None else val_ylabz 
+        # zlogger.log('zdataset.yInts', "{} from cats of {}".format(val_ylabz, repr(self.class_categories)) )
         return [ self.getYLabelIndex(y) for y in val_ylabz ]
 
 
     def getNumberClasses(self):
-        return len( set( list(self.y_labelz) ) ) 
+        return len( set( list(self.class_categories) ) ) 
 
     '''
     Things done
@@ -573,6 +578,8 @@ class ZGsheetFaqDataSet( ZDataset ):
         self.faq_db, self.phrases_db = zdata_source.readFrom(data_path, data_type)  
         self.data = np.array( [ k for k in self.phrases_db.keys() ] ) 
         self.y_labelz = np.array( [ k for k in self.phrases_db.values() ] )  
+        self.updateXIndex()
+        self.updateYIndex()
 
     def fetchResponse(self, class_category):
         return self.faq_db.get( class_category, "I don't know about that one yet. I'll go learn some more.")

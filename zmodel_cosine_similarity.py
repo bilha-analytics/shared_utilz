@@ -20,9 +20,10 @@ class ZCosineSimilarity(ZModel):
     #################### CREATE: BUILD & TRAIN ######################
     '''
     ''' 
-    def build(self, tfidf_context, tfidf_matrix):
+    def build(self, tfidf_context, tfidf_matrix, train_ylabz_idxs):
         self.model = tfidf_context 
         self.trained_matrix = tfidf_matrix 
+        self.train_ylabz_idxs = train_ylabz_idxs 
 
 
     def train(self, **kwargz):
@@ -33,8 +34,12 @@ class ZCosineSimilarity(ZModel):
         return % correctly classified 
     '''
     def validate(self, text_list, ylabelz_list): 
+        def getPredictedYlabzIdxs(pred_x_idx):
+            return self.train_ylabz_idxs[ pred_x_idx]
+
         # zlogger.log('cosine.validate', "y.IN: {}".format( repr(ylabelz_list) )  )
         predicted_list = np.array( [ self.predict( [rec] ) for rec in text_list ]  ) 
+        predicted_list = np.array([ getPredictedYlabzIdxs(x) for x in predicted_list ] ) 
         return np.array( predicted_list == np.array(ylabelz_list) ).mean() , predicted_list  
 
 
