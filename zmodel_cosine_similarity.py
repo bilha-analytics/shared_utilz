@@ -20,10 +20,12 @@ class ZCosineSimilarity(ZModel):
     #################### CREATE: BUILD & TRAIN ######################
     '''
     ''' 
-    def build(self, tfidf_context, tfidf_matrix, train_ylabz_idxs):
+    def build(self, tfidf_context, tfidf_matrix, train_ylabz_idxs, preprocessor):
         self.model = tfidf_context 
         self.trained_matrix = tfidf_matrix 
         self.train_ylabz_idxs = train_ylabz_idxs 
+        self.preprocessor = dict( preprocessor  ) 
+        self.preprocessor.pop( 'doPredictEncode' ) 
 
 
     def train(self, **kwargz):
@@ -47,11 +49,22 @@ class ZCosineSimilarity(ZModel):
     
     #################### APPLY: PREDICT ######################
     '''
+    TODO: fix and include preprocess+encoder_selector here
     requires that input_text has been preprocessed in same way as training text
     returns index of most similar doc
     '''
-    def predict(self, clean_input_text):
-        # zlogger.log('cosine.predict', "IN: {}".format( repr(clean_input_text ) )  )
+    def predict(self, input_text):        
+        zlogger.log('cosine.predict', "IN: {}".format( repr(input_text ) )  )
+        
+        zlogger.log('cosine.predict', "IN.PREPROC: {}".format( repr(self.preprocessor) )  )
+
+        clean_input_text = self.preprocessText( input_text ) 
+
+        zlogger.log('cosine.predict', "IN.CLEAN: {}".format( repr(clean_input_text ) )  )
+           
+        # if not isinstance(clean_input_text, str):
+        #     clean_input_text = " ".join( list( clean_input_text) )
+        
         input_vec = self.model.transform( clean_input_text )        
         valz = cosine_similarity( input_vec, self.trained_matrix )  
         idx = valz.argsort()[0][-2] 
@@ -65,3 +78,12 @@ class ZCosineSimilarity(ZModel):
         #     idx =  None
 
         return idx 
+
+
+
+    def dumpSave(self, fpath=None): 
+        self.persist['model'] =  self.model 
+        self.persist['train_ylabz_idxs'] = self.train_ylabz_idxs 
+        self.persist['trained_matrix'] = self.trained_matrix
+        self.persist['preprocessor'] = self.preprocessor
+        ZModel.dumpSave(self, fpath)

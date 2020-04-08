@@ -218,7 +218,7 @@ def embeddingEncode(text_list, ngram_range=(1,1), **kwargz):
 '''
 TODO:
 '''
-def doTrainEncode(enc_type, text_list, ngram_range=(1,1), **argz):
+def doTrainEncode(text_list, enc_type=1000, ngram_range=(1,1), **argz):
 #     params = ['remove_stopwordz', 'stop_wordz', 'remove_numberz','lemmatized', 'ngram_range' ]
 #     for p in params:
 #         if not p in argz.keys():
@@ -231,7 +231,7 @@ def doTrainEncode(enc_type, text_list, ngram_range=(1,1), **argz):
 '''
 TODO: include preprocessing
 '''
-def doPredictEncode(context, text,  enc_type=ZENC_TFIDF):
+def doPredictEncode(text, context=None, enc_type=ZENC_TFIDF):
     result = None 
 
     if enc_type == ZENC_ONEHOT:
@@ -281,6 +281,18 @@ dict_selectors = {
 
 
 
+# class ZEncoder():
+#     def __init__(self, ptype, pconfig):
+#         self.prep_type = etype 
+#         self.prep_cofig = econfig 
+#         self.persist = {
+#             'encoder_type' : self.encoder_type, 
+#             'encoder_config' : self.encoder_cofig, 
+#         }
+    
+
+
+
 '''
 TODO: abstract class, iterable, own and encap a data
 '''
@@ -298,6 +310,7 @@ class ZDataset():
         self.encoded_matrix = None 
         self.data = None         
         self.class_categories = None 
+        self.preprocessor = None
         ## TODO: save paramz @ dump clean_data
         self.paramz = {
             'remove_stopwordz' : True,
@@ -491,7 +504,11 @@ class ZDataset():
                 " ".join( sorted( set( rec ) )   ) 
                         for rec in self.clean_data
             ])
-            
+        
+        if self.preprocessor is None:
+            self.preprocessor = { }
+        self.preprocessor['cleanup_and_lemmatize'] = self.paramz   
+
         self.updateXIndex()
 
     '''
@@ -553,12 +570,17 @@ class ZDataset():
     '''
     def encodeTrain(self,  enc_type=ZENC_TFIDF, ngramz=(1,1) ):       
         self.enc_type = enc_type 
-        self.context, self.encoded_matrix = doTrainEncode( enc_type, self.clean_data , ngram_range=ngramz ) 
+        self.context, self.encoded_matrix = doTrainEncode( self.clean_data,  enc_type=enc_type, ngram_range=ngramz ) 
+        
+        if self.preprocessor is None:
+            self.preprocessor = { } 
+        self.preprocessor['doPredictEncode'] = {'enc_type': enc_type, 'context': self.context, }  
+
         return self.context, self.encoded_matrix 
 
     def encodePredict(self, text_list):
         cleaned_text = self.preprocessPredict(text_list) 
-        return doPredictEncode(  self.context,  cleaned_text, self.enc_type )  
+        return doPredictEncode(  cleaned_text, self.context,  self.enc_type )  
    
 
 '''
@@ -581,8 +603,6 @@ class ZGsheetFaqDataSet( ZDataset ):
         self.updateXIndex()
         self.updateYIndex()
 
-    def fetchResponse(self, class_category):
-        return self.faq_db.get( class_category, "I don't know about that one yet. I'll go learn some more.")
 
     ##TODO: super call
     def getDumpSaveItems(self ):
@@ -631,12 +651,14 @@ if __name__ == "__main__":
     print( "Tokens len: {}\n{}\n".format( len(dset.clean_data), dset.clean_data ) ) 
 
     vocab, matrix = dset.encodeTrain(enc_type=ZENC_ONEHOT)
+    matrix = np.array(matrix)
     zlogger.log(src+".OnehotEncode", "Vocab = {} \nMatrix = {}".format(len(vocab), matrix.shape) )
     print( "Context: {}\n Matrix: {}\n".format(vocab, matrix))
     res = dset.encodePredict(ps)
     zlogger.log(src+".OnehotEncodePredict", "Input = {} Encoding = {}".format(ps, res) )
 
     vocab, matrix = dset.encodeTrain(enc_type=ZENC_COUNT)
+    matrix = np.array(matrix)
     zlogger.log(src+".CountEncode", "Vocab = {} \nMatrix = {}".format(vocab, matrix.shape) )
     print( "Context: {}\n Matrix: {}\n".format(vocab, matrix))
     res = dset.encodePredict(ps)
@@ -644,6 +666,7 @@ if __name__ == "__main__":
 
 
     vocab, matrix = dset.encodeTrain(enc_type=ZENC_TFIDF)
+    matrix = np.array(matrix)
     zlogger.log(src+".TfidfEncode", "Vocab = {} \nMatrix = {}".format(vocab, matrix.shape) )
     print( "Context: {}\n Matrix: {}\n".format(vocab, matrix))
     res = dset.encodePredict(ps)
@@ -669,8 +692,8 @@ if __name__ == "__main__":
     k = list(dset.faq_db.keys())[0]
     v = dset.faq_db[ k ] 
     zlogger.log(src+".DictFaq",  "{} : {}".format( k, v   ) )
-    k = list(dset.data.keys())[0]
-    v = dset.data[ k ] 
+    k = list(dset.phrases_db.keys())[0]
+    v = dset.phrases_db[ k ] 
     zlogger.log(src+".Phrases",  "{} : {}".format( k, v   ) )
     # dset.category_to_index()
     # zlogger.log(src+".DictFaq", "{} \nItems: {}".format(len(dset.faq_db), dset.faq_db ) )

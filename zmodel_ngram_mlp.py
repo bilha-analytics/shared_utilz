@@ -8,8 +8,9 @@ import zlogger
 import zdataset
 from zmodel  import ZModel 
 
-import tensorflow as tf 
 from tensorflow import keras
+
+import os
 
 import nltk 
 import numpy as np 
@@ -22,7 +23,7 @@ class NgramMLP(ZModel):
         - embedd : from scratch if large, else reuse 
         - 
     ''' 
-    def build(self, encoder_context, encoded_matrix, ylabelz, 
+    def build(self, encoder_context, encoded_matrix, ylabelz, preprocessor, 
                 t_ratio, # threshold @  bow Vs seq approach 
                 vocab_size, 
                 n_classez=2, # bi Vs multi-class @ output layer config 
@@ -41,7 +42,8 @@ class NgramMLP(ZModel):
         self.encoder = encoder_context 
         self.trained_matrix = encoded_matrix 
         self.ylabelz = ylabelz 
-        input_shapez = self.trained_matrix.shape[1:]
+        input_shapez = self.trained_matrix.shape[1:]        
+        self.preprocessor = preprocessor 
         # zlogger.log( 'MLP.build' , "input_shapez = {}".format(input_shapez ) ) 
 
         ### 2. build model << TODO: t_ratio ngram MLP Vs SepCNN
@@ -120,11 +122,13 @@ class NgramMLP(ZModel):
     
     #################### APPLY: PREDICT ######################
     '''
+    TODO: fix and include preprocess+encoder_selector here
     requires that input_text has been preprocessed in same way as training text
     returns index of most similar doc
     '''
-    def predict(self, clean_encoded_text):
+    def predict(self, input_text):
         idx = None 
+        clean_encoded_text = self.preprocessText( input_text )  
         zlogger.log('mlp.predict', "IN: {}".format( repr(clean_encoded_text ) )  )
 
         idx = self.model.predict( clean_encoded_text )
@@ -132,3 +136,44 @@ class NgramMLP(ZModel):
         zlogger.log('mlp.predict', "ANS: {}".format( idx ) )  
         
         return idx 
+
+
+    
+    def dumpSave(self, fpath=None): 
+        krs_path = self.genModelFilePath(fpath) 
+        self.persist['model'] =  krs_path 
+        ## 1. dump other objects 
+        ZModel.dumpSave(self, fpath)
+
+        ## 2. dump whole keras model 
+        self.model.save( krs_path )
+
+
+        # ## save keras model as json
+        # with open( krs_path, 'w') as fd:
+        #     fd.write( self.model.to_json() ) 
+        # # and the weights
+        # self.model.save_weights( "{}.h5".format(krs_path) )
+
+    
+    def loadDump(self, fpath=None): 
+        ## 1. load other objects 
+        ZModel.loadDump(self, fpath)
+
+        ## 2. load keras model
+        krs_path = self.persist['model']         
+        zlogger.log('NgramMLP.loadDump', "Loading From: {}".format( krs_path) ) 
+
+        self.model = keras.models.load_model( krs_path ) 
+
+
+        # ## load keras model as json
+        # with open( krs_path, 'r') as fd:
+        #     self.model = keras.models.model_from_json( fd.read() )  
+        # # and the weights        
+        # self.model.load_weights( "{}.h5".format(krs_path) )
+
+        zlogger.log('NgramMLP.loadDump', "FIN: {}".format( self.model.summary() ) ) 
+
+    def genModelFilePath(self, fpath):
+        return "{}.krs.h5".format(self.getModelFPath(fpath) )  

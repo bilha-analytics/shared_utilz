@@ -11,16 +11,22 @@ import zlogger
 from termcolor import colored 
 import random
 
-
+import zdata_source 
 from zdataset import cleanup_and_lemmatize
+from zdataset import ZGsheetFaqDataSet 
 from zmodel import ZModel
+from zmodel_cosine_similarity import ZCosineSimilarity
+from zmodel_ngram_mlp import NgramMLP
 
 
 ## AVAILABLE LEARNING MODELS 
 ## TODO: refactor 
-MODEL_TFIDF = 1 # is default?? 
+MODEL_COSINE_TFIDF = 1 # is default?? 
+MODEL_NGRAM_MLP = 2
 
 AVAILABLE_MODELZ = {
+    MODEL_COSINE_TFIDF : ZCosineSimilarity, 
+    MODEL_NGRAM_MLP : NgramMLP 
 }
 
 
@@ -55,7 +61,11 @@ class ZBotLogicFlow():
         self.model_type = mtype
         mclass = AVAILABLE_MODELZ.get(mtype, ZModel )  
         self.model = mclass() 
-        self.model.load(mpath) 
+        self.model.loadDump(mpath) 
+
+    def loadFaqDbz(self, faq_path, faq_typ=zdata_source.zGSHEET_FAQ):        
+        self.dset = ZGsheetFaqDataSet()
+        self.dset.initFromResource(faq_path, faq_typ)  
 
     def getResponse(self, user_input_text): 
         response = None
@@ -80,7 +90,14 @@ class ZBotLogicFlow():
                 return response, rcode 
 
         if was_que:
-            response = self.model.predict( user_input_text ) 
+            pred_cat = self.model.predict( user_input_text )
+            # zlogger.log("bot.Predicted", "IN = {}".format( repr(pred_cat ) ) )
+            if isinstance( pred_cat, list):
+                pred_cat = pred_cat[0] 
+            pred_cat, response = self.dset.getPredictedAtIndex( pred_cat ) 
+            # zlogger.log("bot.Predicted", "Class = {}".format( repr(pred_cat ) ) )
+            if isinstance( response, list):
+                response, response_src, response_link, *_ = response
             rcode = self.RCODE_LEARNT_RESPONSE 
 
         return response, rcode 
@@ -91,7 +108,7 @@ if __name__ == "__main__":
     zlogger.log("botLogic.main", "Starting")
 
     bot = ZBotLogicFlow()
-    bot.loadModel( MODEL_TFIDF, "TFIDF_ChatBot.zmd") 
+    bot.loadModel( 90, "TFIDF_ChatBot.zmd") 
 
     while( 1 ):
         user_input = input( colored("Talk to me: ", "yellow") )
