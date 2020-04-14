@@ -1,0 +1,12 @@
+{% extends 'layout_chat.html' %}
+
+{% block widget_content%}
+<div class="container-fluid p-3 my-3">
+    <div class="embed-responsive embed-responsive-1by1 mb-4">
+        <iframe src="//arcgis.com/apps/Embed/index.html?webmap=14aa9e5660cf42b5b4b546dec6ceec7c&extent=77.3846,11.535,163.5174,52.8632&center=28.8189834,-2.5117154&zoom=true&previewImage=false&scale=true&disable_scroll=true&theme=light"  
+            width="650" height="400" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" title="2019-nCoV">
+        </iframe>
+    </div>
+    <small> <strong> Credits:</strong> John Hopkins University </small>
+</div>
+{% endblock %}

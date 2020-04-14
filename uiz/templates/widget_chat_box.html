@@ -1,0 +1,45 @@
+{% extends 'layout_chat.html' %}
+
+{% block widget_content %}
+<!-- scrollable content pane -->
+<div class="" id="msgs_container">
+    {% for msg in msgs %}
+        {% if msg.src == 'out' %}
+            <p class="bg-info rounded p-3 mr-4 float-left shadow" >
+                {{ msg.msg }}
+            </p>
+            <span class="clearfix"></span>
+        {% else %}            
+            <p class="bg-success rounded p-3 ml-4 float-right shadow"> 
+                {{ msg.msg }}
+            </p>
+            <span class="clearfix"></span>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<!-- force bottom of chat box -->
+<span id="bottomz"></span>
+
+<!-- text input message box AND is fixed bottom -->
+<nav class='navbar navbar-expand-sm bg-dark navbar-dark fixed-bottom d-flex'>
+    <form class="flex-fill" action="{{ url_for('home') }}" method="POST">
+        <div class="input-group" >                
+            <input class="form-control " type="text" id='askBot' name='askBot' placeholder="ask me about rona"></textarea>
+            <div class="input-group-append">
+                <!-- <span class="input-group-text">ask</span> -->
+                <button class="btn btn-success" type="submit"> 
+                    ask
+                </button>
+            </div>
+        </div>        
+    </form>
+</nav>
+
+<script>
+    $("#submit").click(function() {
+        $(".msgs_container").stop().animate({ scrollTop: $(".msgs_container")[0].scrollHeight}, 1000);
+    });
+</script>
+
+{% endblock %}
