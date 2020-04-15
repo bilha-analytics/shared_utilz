@@ -45,6 +45,10 @@ chat_messages = [
 def home(user=None):
     # user = 'test' if user is None else user 
     # return "<H1> We've landed!!! {}</H1>".format(user)
+    print( ">>>> ", repr(request) ) 
+    
+    print( ">>>> ", repr(request.form) ) 
+
     user_que = request.form.get('askBot')
     print(' user asked: ', user_que )
 
@@ -56,17 +60,17 @@ def home(user=None):
             {'src': 'out', 'msg' : "_".join( user_que.upper() ) }   
         )
 
-    return render_template('widget_chat_box.html', id='bottomz', msgs=chat_messages) 
+    return render_template('layout_chat.html', id='bottomz', msgs=chat_messages) 
 
 
-@app.route('/jhu_map')
-def show_jhu_map():
-    return render_template('widget_jhu_map.html') 
+# @app.route('/jhu_map')
+# def show_jhu_map():
+#     return render_template('widget_jhu_map.html') 
 
 
-@app.route('/about')
-def about():
-    return render_template('widget_about.html') 
+# @app.route('/about')
+# def about():
+#     return render_template('widget_about.html') 
 
 
 if __name__ == "__main__":

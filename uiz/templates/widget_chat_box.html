@@ -1,18 +1,17 @@
-{% extends 'layout_chat.html' %}
-
-{% block widget_content %}
 <!-- scrollable content pane -->
 <div class="" id="msgs_container">
     {% for msg in msgs %}
         {% if msg.src == 'out' %}
-            <p class="bg-info rounded p-3 mr-4 float-left shadow" >
-                {{ msg.msg }}
-            </p>
+            <div class="media bg-light rounded p-3 mr-4 float-left shadow mb-2" >
+                <small class="rounded-circle bg-success mr-2 p-2 text-white">bot</small> 
+                <div class="media-body"> <p> {{ msg.msg }} </p> </div>
+            </div>
             <span class="clearfix"></span>
         {% else %}            
-            <p class="bg-success rounded p-3 ml-4 float-right shadow"> 
-                {{ msg.msg }}
-            </p>
+            <div class="media bg-light rounded p-3 ml-4 float-right shadow  mb-2"> 
+                <small class="rounded-circle bg-info mr-2 p-2 text-white">me </small> 
+                <div class="media-body"> <p> {{ msg.msg }} </p> </div>
+            </div>
             <span class="clearfix"></span>
         {% endif %}
     {% endfor %}
@@ -25,7 +24,7 @@
 <nav class='navbar navbar-expand-sm bg-dark navbar-dark fixed-bottom d-flex'>
     <form class="flex-fill" action="{{ url_for('home') }}" method="POST">
         <div class="input-group" >                
-            <input class="form-control " type="text" id='askBot' name='askBot' placeholder="ask me about rona"></textarea>
+            <input class="form-control " type="text" id='askBot' name='askBot' placeholder="ask me about rona"></input>
             <div class="input-group-append">
                 <!-- <span class="input-group-text">ask</span> -->
                 <button class="btn btn-success" type="submit"> 
@@ -36,10 +35,3 @@
     </form>
 </nav>
 
-<script>
-    $("#submit").click(function() {
-        $(".msgs_container").stop().animate({ scrollTop: $(".msgs_container")[0].scrollHeight}, 1000);
-    });
-</script>
-
-{% endblock %}
