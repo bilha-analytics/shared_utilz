@@ -623,6 +623,8 @@ class ZGsheetFaqDataSet( ZDataset ):
         return { **tmp , **tmp2}
 
     def getPredictedAtIndex(self, y_index): 
+        if y_index is None:
+            return None, None
         # zlogger.log( 'zdataset.get_y-at', "IN: {}".format(y_index ) )
         class_cat = self.y_labelz[ y_index ] 
         # zlogger.log( 'zdataset.get_y-at', "CAT: {}".format( class_cat ) ) 

@@ -91,11 +91,11 @@ class ZBotLogicFlow():
 
         if was_que:
             pred_cat = self.model.predict( user_input_text )
-            # zlogger.log("bot.Predicted", "IN = {}".format( repr(pred_cat ) ) )
+            zlogger.log("bot.Predicted", "IN = {}".format( repr(pred_cat ) ) )
             if isinstance( pred_cat, list):
                 pred_cat = pred_cat[0] 
             pred_cat, response = self.dset.getPredictedAtIndex( pred_cat ) 
-            # zlogger.log("bot.Predicted", "Class = {}".format( repr(pred_cat ) ) )
+            zlogger.log("bot.Predicted", "Class = {}".format( repr(pred_cat ) ) )
             if isinstance( response, list):
                 response, response_src, response_link, *_ = response
             rcode = self.RCODE_LEARNT_RESPONSE 

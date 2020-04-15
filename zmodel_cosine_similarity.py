@@ -16,6 +16,7 @@ import numpy as np
 
 
 class ZCosineSimilarity(ZModel):  
+    _predict_threshold = 0.1
 
     #################### CREATE: BUILD & TRAIN ######################
     '''
@@ -67,16 +68,18 @@ class ZCosineSimilarity(ZModel):
         
         input_vec = self.model.transform( clean_input_text )        
         valz = cosine_similarity( input_vec, self.trained_matrix )  
-        idx = valz.argsort()[0][-2] 
+        idx = valz.argsort()[0][-1] 
         
         # zlogger.log('cosine.predict', "ANS: {}".format( idx ) )  
 
         # flatz = valz.flatten()
         # flatz.sort()
-        # resp = flatz[-2]
-        # if resp == 0: ## TODO threshold it 
-        #     idx =  None
+        # resp = flatz[-1]
+        resp = valz[0][ idx ]
+        if resp <= self._predict_threshold: ## TODO threshold it at .5 
+            idx =  None
 
+        zlogger.log('CosSimilarity.Predict', "idx = {}, resp= {}".format(idx, resp) ) 
         return idx 
 
 
