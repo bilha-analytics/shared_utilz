@@ -1,0 +1,17 @@
+
+<!-- title and nav bar button AND is fixed at top -->
+<nav class="navbar bg-light navbar-light fixed-top">
+    <!-- logo on the left -->
+    {% include 'widget_logo.html' %}
+
+    <!-- collapsible menu button -->
+    <button class="navbar-toggler" type="button" data-toggle='collapse' data-target='#dMenu'>
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <!-- collapsible menu -->
+    <div class="collapse navbar-collapse" id="dMenu">
+        {% include 'widget_menu_navbar.html' %}
+    </div>
+</nav>
+
+<span class="mt-5"></span>

@@ -1,0 +1,23 @@
+{% extends 'layout_base.html' %}
+
+{% block app_layout%}
+<div class="container-fluid p-3 my-3">
+    {% include 'widget_tab_navbar_fixed.html' %}
+
+
+    <div class="tab-content" id='tabz'>
+        <div class="tab-pane container active" id="homez">
+            {% include 'widget_chat_box.html' %}
+        </div>
+        
+        <div class="tab-pane container " id="mapz">
+            {% include 'widget_jhu_map.html' %}
+        </div>
+        
+        <div class="tab-pane container " id="aboutz">
+            {% include 'widget_about.html' %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

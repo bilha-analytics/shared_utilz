@@ -1,0 +1,14 @@
+<div class="media rounded">
+    {% if msg.src == 'in' %}
+        <img src="" alt='bot or you' class="rounded-circle" style="width: 20px;">
+        <div class="media-body p-3 ml-4 float-right shadow">
+            <p> {{ msg.msg }} </p>
+        </div>
+    {% else %}
+        <img src="" alt='bot or you' class="rounded-circle" style="width: 20px;">
+        <div class="media-body p-3 mr-4 float-left shadow">
+            <p> {{ msg.msg }} </p>
+        </div>
+    {%endif %}
+    
+</div>
